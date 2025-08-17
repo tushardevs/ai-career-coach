@@ -18,3 +18,5 @@ NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/onboarding
 
 GEMINI_API_KEY=
 ```
+npx prisma migrate dev --name create-models
+

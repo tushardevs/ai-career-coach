@@ -35,6 +35,7 @@ const DashboardView = ({ insights }) => {
     min: range.min / 1000,
     max: range.max / 1000,
     median: range.median / 1000,
+    location: range.location,
   }));
 
   const getDemandLevelColor = (level) => {
@@ -161,9 +162,11 @@ const DashboardView = ({ insights }) => {
                 <Tooltip
                   content={({ active, payload, label }) => {
                     if (active && payload && payload.length) {
+                        const location = payload[0]?.payload?.location;
                       return (
                         <div className="bg-background border rounded-lg p-2 shadow-md">
                           <p className="font-medium">{label}</p>
+                          <p className="text-xs">Location: {location}</p>
                           {payload.map((item) => (
                             <p key={item.name} className="text-sm">
                               {item.name}: ${item.value}K

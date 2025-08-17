@@ -9,7 +9,9 @@ const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 export const generateAIInsights = async (industry) => {
   const prompt = `
-          Analyze the current state of the ${industry} industry and provide insights in ONLY the following JSON format without any additional notes or explanations:
+          Analyze the current state of the ${industry} industry across the major global markets.
+          Provide a worldwide market overview, focusing on key differences and similarities between
+          these regions. Return the insights in ONLY the following JSON format without any additional notes or explanations:
           {
             "salaryRanges": [
               { "role": "string", "min": number, "max": number, "median": number, "location": "string" }
@@ -21,11 +23,11 @@ export const generateAIInsights = async (industry) => {
             "keyTrends": ["trend1", "trend2"],
             "recommendedSkills": ["skill1", "skill2"]
           }
-          
+
           IMPORTANT: Return ONLY the JSON. No additional text, notes, or markdown formatting.
           Include at least 5 common roles for salary ranges.
           Growth rate should be a percentage.
-          Include at least 5 skills and trends.
+          Include at least 5 top skills and 5 key trends that are relevant globally.
         `;
 
   const result = await model.generateContent(prompt);
@@ -57,7 +59,7 @@ export async function getIndustryInsights() {
       data: {
         industry: user.industry,
         ...insights,
-        nextUpdate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        nextUpdate: new Date(Date.now() + 24 * 60 * 60 * 1000),
       },
     });
 
