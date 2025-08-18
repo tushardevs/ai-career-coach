@@ -97,3 +97,53 @@ model IndustryInsight {
 
   @@index([industry])
 }
+
+// Blog Posts for Career Insights and Tips
+model BlogPost {
+  id            String    @id @default(cuid())
+  title         String    // Blog post title
+  slug          String    @unique // URL-friendly slug
+  excerpt       String    // Short description/excerpt
+  content       String    @db.Text // Full blog content in markdown
+  author        String    // Author name
+  authorAvatar  String?   // Author avatar image URL
+  publishDate   DateTime  @default(now())
+  readTime      String    // Estimated reading time (e.g., "8 min read")
+  views         Int       @default(0) // View count
+  category      String    // Main category (e.g., "Technical Skills", "Interview Tips")
+  tags          String[]  // Array of tags for categorization
+  featured      Boolean   @default(false) // Whether post is featured
+  status        String    @default("published") // draft, published, archived
+  
+  // SEO fields
+  metaTitle     String?   // SEO meta title
+  metaDescription String? // SEO meta description
+  keywords      String[]  // SEO keywords
+  
+  // Content management
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  comments      BlogComment[] // Blog comments
+  
+  @@index([category])
+  @@index([status])
+  @@index([publishDate])
+  @@index([featured])
+}
+
+// Blog Comments
+model BlogComment {
+  id          String    @id @default(cuid())
+  blogPostId  String
+  blogPost    BlogPost  @relation(fields: [blogPostId], references: [id], onDelete: Cascade)
+  authorName  String    // Commenter's name
+  authorEmail String    // Commenter's email
+  content     String    // Comment content
+  status      String    @default("pending") // pending, approved, spam
+  createdAt   DateTime  @default(now())
+  
+  @@index([blogPostId])
+  @@index([status])
+}
