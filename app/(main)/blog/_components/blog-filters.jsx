@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,24 +24,15 @@ export default function BlogFilters({
   setSortBy,
   clearFilters
 }) {
+    {/*
   const categories = [
-    { name: 'Technical Skills', count: 15, color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300' },
-    { name: 'Interview Tips', count: 12, color: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300' },
-    { name: 'Industry Trends', count: 8, color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300' },
-    { name: 'Career Growth', count: 20, color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300' },
-    { name: 'Education', count: 10, color: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300' }
+    { name: 'Technical Skills', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300' },
+    { name: 'Interview Tips', color: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300' },
+    { name: 'Industry Trends', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300' },
+    { name: 'Career Growth', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300' },
+    { name: 'Education', color: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300' }
   ];
-
-  const popularTags = [
-    { name: 'Programming', count: 25 },
-    { name: 'Remote Work', count: 18 },
-    { name: 'AI', count: 15 },
-    { name: 'Resume Writing', count: 22 },
-    { name: 'Networking', count: 16 },
-    { name: 'Job Search', count: 30 },
-    { name: 'Career Development', count: 28 },
-    { name: 'Interview Preparation', count: 19 }
-  ];
+  */}
 
   const sortOptions = [
     { value: 'latest', label: 'Latest First', icon: Calendar },
@@ -49,6 +40,57 @@ export default function BlogFilters({
     { value: 'trending', label: 'Trending', icon: TrendingUp },
     { value: 'oldest', label: 'Oldest First', icon: Clock }
   ];
+
+  // Fetch tags dynamically
+  const [popularTags, setPopularTags] = useState([]);
+  const [tagsLoading, setTagsLoading] = useState(true);
+  const [tagsError, setTagsError] = useState(null);
+
+  useEffect(() => {
+    async function fetchTags() {
+      setTagsLoading(true);
+      setTagsError(null);
+      try {
+        const res = await fetch("/api/blog/tags");
+        const data = await res.json();
+        if (data.success) {
+          setPopularTags(data.tags);
+        } else {
+          setTagsError(data.error || "Failed to fetch tags");
+        }
+      } catch (err) {
+        setTagsError("Failed to fetch tags");
+      } finally {
+        setTagsLoading(false);
+      }
+    }
+    fetchTags();
+  }, []);
+
+  const [categories, setCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState(null);
+
+  useEffect(() => {
+    async function fetchCategories() {
+      setCategoriesLoading(true);
+      setCategoriesError(null);
+      try {
+        const res = await fetch("/api/blog/categories");
+        const data = await res.json();
+        if (data.success) {
+          setCategories(data.categories); // categories: [{ name, color, count }]
+        } else {
+          setCategoriesError(data.error || "Failed to fetch categories");
+        }
+      } catch (err) {
+        setCategoriesError("Failed to fetch categories");
+      } finally {
+        setCategoriesLoading(false);
+      }
+    }
+    fetchCategories();
+  }, []);
 
   const handleCategoryToggle = (categoryName) => {
     setSelectedCategories(prev =>
@@ -103,23 +145,27 @@ export default function BlogFilters({
           <CardDescription>Filter by article topics</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {categories.map((category) => (
-            <div key={category.name} className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id={category.name}
-                  checked={selectedCategories.includes(category.name)}
-                  onCheckedChange={() => handleCategoryToggle(category.name)}
-                />
-                <Label htmlFor={category.name} className="cursor-pointer">
-                  {category.name}
-                </Label>
+          {categoriesLoading ? (
+            <div className="text-muted-foreground text-sm">Loading categories...</div>
+          ) : categoriesError ? (
+            <div className="text-red-500 text-sm">{categoriesError}</div>
+          ) : (
+            categories.map((category) => (
+              <div key={category.name} className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id={category.name}
+                    checked={selectedCategories.includes(category.name)}
+                    onCheckedChange={() => handleCategoryToggle(category.name)}
+                  />
+                  <Label htmlFor={category.name} className="cursor-pointer">
+                    {category.name}
+                    <span className="ml-1 text-xs opacity-75">({category.count})</span>
+                  </Label>
+                </div>
               </div>
-              <Badge variant="secondary" className="text-xs">
-                {category.count}
-              </Badge>
-            </div>
-          ))}
+            ))
+          )}
         </CardContent>
       </Card>
 
@@ -130,21 +176,27 @@ export default function BlogFilters({
           <CardDescription>Browse by specific topics</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {popularTags.map((tag) => (
-              <Badge
-                key={tag.name}
-                variant={selectedTags.includes(tag.name) ? "default" : "outline"}
-                className={`cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors ${
-                  selectedTags.includes(tag.name) ? 'bg-primary text-primary-foreground' : ''
-                }`}
-                onClick={() => handleTagToggle(tag.name)}
-              >
-                {tag.name}
-                <span className="ml-1 text-xs opacity-75">({tag.count})</span>
-              </Badge>
-            ))}
-          </div>
+          {tagsLoading ? (
+            <div className="text-muted-foreground text-sm">Loading tags...</div>
+          ) : tagsError ? (
+            <div className="text-red-500 text-sm">{tagsError}</div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {popularTags.map((tag) => (
+                <Badge
+                  key={tag.name}
+                  variant={selectedTags.includes(tag.name) ? "default" : "outline"}
+                  className={`cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors ${
+                    selectedTags.includes(tag.name) ? 'bg-primary text-primary-foreground' : ''
+                  }`}
+                  onClick={() => handleTagToggle(tag.name)}
+                >
+                  {tag.name}
+                  <span className="ml-1 text-xs opacity-75">({tag.count})</span>
+                </Badge>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

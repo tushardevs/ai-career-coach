@@ -20,11 +20,9 @@ import ViewCounter from "./_components/view-counter";
 
 // Generate metadata for SEO
 export async function generateMetadata({ params }) {
-  const { slug } = await params;
-  
   try {
     const blogPost = await db.blogPost.findUnique({
-      where: { slug },
+      where: { slug: params.slug },
       select: {
         title: true,
         excerpt: true,
@@ -118,7 +116,7 @@ export default async function BlogPostPage({ params }) {
 
     return (
       <>
-        <ViewCounter slug={slug} />
+        <ViewCounter slug={params.slug} />
         <div className="container mx-auto px-4 py-8 mt-16">
           {/* Back to Blog Button */}
           <div className="mb-8">

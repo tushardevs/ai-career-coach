@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+"use client";
+
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +17,8 @@ import {
   GraduationCap,
   Briefcase,
   Code,
-  Lightbulb
+  Lightbulb,
+  Plus
 } from "lucide-react";
 import Link from "next/link";
 import BlogList from "./_components/blog-list";
@@ -39,6 +42,32 @@ export default function BlogPage() {
     setSortBy("latest");
   };
 
+  const formatDate = (dateString) => {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    };
+
+  const [featured, setFeatured] = useState(null);
+  const [featuredLoading, setFeaturedLoading] = useState(true);
+
+    useEffect(() => {
+      async function fetchFeatured() {
+        setFeaturedLoading(true);
+        try {
+          const res = await fetch("/api/blog/featured");
+          const data = await res.json();
+          if (data.success) setFeatured(data.featured);
+        } finally {
+          setFeaturedLoading(false);
+        }
+      }
+      fetchFeatured();
+    }, []);
+
   return (
     <div className="container mx-auto px-4 py-8 mt-16">
       {/* Hero Section */}
@@ -54,80 +83,99 @@ export default function BlogPage() {
 
       {/* Featured Blog Post */}
       <div className="mb-16">
-        <Card className="border-2 border-primary/20 overflow-hidden hover:shadow-lg transition-shadow">
-          <div className="grid grid-cols-1 lg:grid-cols-2">
-            <div className="bg-gradient-to-br from-primary/10 to-primary/20 p-8 flex items-center justify-center">
-              <div className="text-center">
-                <BookOpen className="h-16 w-16 text-primary mx-auto mb-4" />
-                <h2 className="text-2xl font-bold text-foreground mb-2">
-                  Featured Article
-                </h2>
-                <p className="text-muted-foreground">
-                  Latest insights from our career experts
-                </p>
-              </div>
-            </div>
-            <div className="p-8">
-              <div className="flex items-center gap-2 mb-4">
-                <Badge variant="secondary">Featured</Badge>
-                <Badge variant="outline">Career Growth</Badge>
-              </div>
-              <h3 className="text-2xl font-bold text-foreground mb-3">
-                The Future of Remote Work: What Job Seekers Need to Know
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                Explore how remote work is reshaping the job market and what skills you need to thrive 
-                in this new landscape. Learn from industry experts and real-world examples.
-              </p>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <User className="h-4 w-4" />
-                    <span>CareerVillage Team</span>
+              <Card className="border-2 border-primary/20 overflow-hidden hover:shadow-lg transition-shadow">
+                <div className="grid grid-cols-1 lg:grid-cols-2">
+                  <div className="bg-gradient-to-br from-primary/10 to-primary/20 p-8 flex items-center justify-center">
+                    <div className="text-center">
+                      <BookOpen className="h-16 w-16 text-primary mx-auto mb-4" />
+                      <h2 className="text-2xl font-bold text-foreground mb-2">
+                        Featured Article
+                      </h2>
+                      <p className="text-muted-foreground">
+                        {featuredLoading
+                          ? "Loading..."
+                          : featured
+                          ? "Most viewed and recent article"
+                          : "No featured article found"}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    <span>Jan 15, 2025</span>
+                  <div className="p-8">
+                    {featured && (
+                      <>
+                        <div className="flex items-center gap-2 mb-4">
+                          <Badge variant="secondary">Featured</Badge>
+                          {featured.category && (
+                            <Badge variant="outline">{featured.category}</Badge>
+                          )}
+                        </div>
+                        <h3 className="text-2xl font-bold text-foreground mb-3">
+                          {featured.title}
+                        </h3>
+                        <p className="text-muted-foreground mb-4">
+                          {featured.excerpt}
+                        </p>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <User className="h-4 w-4" />
+                              <span>{featured.author}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-4 w-4" />
+                              <span>
+                                {featured.publishDate
+                                  ? formatDate(featured.publishDate)
+                                  : ""}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Eye className="h-4 w-4" />
+                              <span>{featured.views} views</span>
+                            </div>
+                          </div>
+                          <Button asChild>
+                            <Link href={`/blog/${featured.slug}`}>
+                              Read More
+                            </Link>
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
-                <Button asChild>
-                  <Link href="/blog/featured-remote-work">
-                    Read More
-                  </Link>
-                </Button>
-              </div>
+              </Card>
             </div>
-          </div>
-        </Card>
-      </div>
 
       {/* Search and Filters */}
       <div className="mb-12">
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="relative flex-1 max-w-md">
+        <div className="flex flex-col md:flex-row gap-6 items-center justify-between bg-white/70 dark:bg-background/70 backdrop-blur-md rounded-2xl shadow-md px-6 py-6 border border-primary/10">
+          <div className="relative flex-1 max-w-md w-full">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Search articles..." 
-              className="pl-10"
+            <Input
+              placeholder="Search articles..."
+              className="pl-10 bg-transparent border-primary/20 focus:border-primary"
               value={search}
               onChange={handleSearchChange}
             />
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm">
-              <Filter className="h-4 w-4 mr-2" />
-              Filters
-            </Button>
-            <Button variant="outline" size="sm">
-              <TrendingUp className="h-4 w-4 mr-2" />
-              Trending
+          <div className="w-full md:w-auto flex justify-end">
+            <Button
+              asChild
+              className="bg-gradient-to-r from-primary to-primary/80 text-black font-semibold shadow-lg hover:from-primary/90 hover:to-primary/70 px-6 py-3 rounded-xl flex items-center gap-2 transition-all duration-200"
+              size="lg"
+            >
+              <Link href="/blog/create" className="flex items-center">
+                <Plus className="h-5 w-5 mr-2" />
+                <span className="text-base md:text-lg">Create Blog</span>
+              </Link>
             </Button>
           </div>
         </div>
       </div>
 
       {/* Category Pills */}
-      <div className="mb-12">
+      {/* <div className="mb-12">
         <div className="flex flex-wrap gap-3 justify-center">
           <Badge variant="default" className="px-4 py-2 cursor-pointer hover:bg-primary/90">
             All Topics
@@ -153,7 +201,7 @@ export default function BlogPage() {
             Industry Trends
           </Badge>
         </div>
-      </div>
+      </div> */}
 
       {/* Blog Content */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
