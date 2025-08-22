@@ -1,4 +1,3 @@
-// app/resume/_components/entry-form.jsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -16,18 +15,21 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { entrySchema } from "@/app/lib/schema";
-import { Sparkles, PlusCircle, X, Pencil, Save, Loader2 } from "lucide-react";
+import { Sparkles, PlusCircle, X, Loader2 } from "lucide-react";
 import { improveWithAI } from "@/actions/resume";
 import { toast } from "sonner";
 import useFetch from "@/hooks/use-fetch";
 
+// ✅ Format YYYY-MM into "MMM yyyy"
 const formatDisplayDate = (dateString) => {
   if (!dateString) return "";
   const date = parse(dateString, "yyyy-MM", new Date());
   return format(date, "MMM yyyy");
 };
 
-export function EntryForm({ type, entries, onChange }) {
+// ✅ Section Form (Experience, Education, Projects)
+export function EntryForm({ type, entries = [], onChange }) {
+  const safeEntries = Array.isArray(entries) ? entries : [];
   const [isAdding, setIsAdding] = useState(false);
 
   const {
@@ -51,24 +53,26 @@ export function EntryForm({ type, entries, onChange }) {
 
   const current = watch("current");
 
+  // ✅ Add new entry
   const handleAdd = handleValidation((data) => {
     const formattedEntry = {
       ...data,
       startDate: formatDisplayDate(data.startDate),
-      endDate: data.current ? "" : formatDisplayDate(data.endDate),
+      endDate: data.current ? "Present" : formatDisplayDate(data.endDate),
     };
 
-    onChange([...entries, formattedEntry]);
-
+    onChange([...safeEntries, formattedEntry]);
     reset();
     setIsAdding(false);
   });
 
+  // ✅ Delete entry
   const handleDelete = (index) => {
-    const newEntries = entries.filter((_, i) => i !== index);
+    const newEntries = safeEntries.filter((_, i) => i !== index);
     onChange(newEntries);
   };
 
+  // ✅ AI improvement
   const {
     loading: isImproving,
     fn: improveWithAIFn,
@@ -76,7 +80,6 @@ export function EntryForm({ type, entries, onChange }) {
     error: improveError,
   } = useFetch(improveWithAI);
 
-  // Add this effect to handle the improvement result
   useEffect(() => {
     if (improvedContent && !isImproving) {
       setValue("description", improvedContent);
@@ -87,7 +90,6 @@ export function EntryForm({ type, entries, onChange }) {
     }
   }, [improvedContent, improveError, isImproving, setValue]);
 
-  // Replace handleImproveDescription with this
   const handleImproveDescription = async () => {
     const description = watch("description");
     if (!description) {
@@ -97,42 +99,40 @@ export function EntryForm({ type, entries, onChange }) {
 
     await improveWithAIFn({
       current: description,
-      type: type.toLowerCase(), // 'experience', 'education', or 'project'
+      type: type.toLowerCase(),
     });
   };
 
   return (
     <div className="space-y-4">
-      <div className="space-y-4">
-        {entries.map((item, index) => (
-          <Card key={index}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {item.title} @ {item.organization}
-              </CardTitle>
-              <Button
-                variant="outline"
-                size="icon"
-                type="button"
-                onClick={() => handleDelete(index)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                {item.current
-                  ? `${item.startDate} - Present`
-                  : `${item.startDate} - ${item.endDate}`}
-              </p>
-              <p className="mt-2 text-sm whitespace-pre-wrap">
-                {item.description}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Existing entries */}
+      {safeEntries.map((item, index) => (
+        <Card key={index}>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-medium">
+              {item.title} @ {item.organization}
+            </CardTitle>
+            <Button
+              variant="outline"
+              size="icon"
+              type="button"
+              onClick={() => handleDelete(index)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              {item.startDate} – {item.endDate}
+            </p>
+            <p className="mt-2 text-sm whitespace-pre-wrap">
+              {item.description}
+            </p>
+          </CardContent>
+        </Card>
+      ))}
 
+      {/* Add new entry */}
       {isAdding && (
         <Card>
           <CardHeader>
@@ -140,56 +140,16 @@ export function EntryForm({ type, entries, onChange }) {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Input
-                  placeholder="Title/Position"
-                  {...register("title")}
-                  error={errors.title}
-                />
-                {errors.title && (
-                  <p className="text-sm text-red-500">{errors.title.message}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Input
-                  placeholder="Organization/Company"
-                  {...register("organization")}
-                  error={errors.organization}
-                />
-                {errors.organization && (
-                  <p className="text-sm text-red-500">
-                    {errors.organization.message}
-                  </p>
-                )}
-              </div>
+              <Input placeholder="Title/Position" {...register("title")} />
+              <Input
+                placeholder="Organization/Company"
+                {...register("organization")}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Input
-                  type="month"
-                  {...register("startDate")}
-                  error={errors.startDate}
-                />
-                {errors.startDate && (
-                  <p className="text-sm text-red-500">
-                    {errors.startDate.message}
-                  </p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Input
-                  type="month"
-                  {...register("endDate")}
-                  disabled={current}
-                  error={errors.endDate}
-                />
-                {errors.endDate && (
-                  <p className="text-sm text-red-500">
-                    {errors.endDate.message}
-                  </p>
-                )}
-              </div>
+              <Input type="month" {...register("startDate")} />
+              <Input type="month" {...register("endDate")} disabled={current} />
             </div>
 
             <div className="flex items-center space-x-2">
@@ -199,27 +159,18 @@ export function EntryForm({ type, entries, onChange }) {
                 {...register("current")}
                 onChange={(e) => {
                   setValue("current", e.target.checked);
-                  if (e.target.checked) {
-                    setValue("endDate", "");
-                  }
+                  if (e.target.checked) setValue("endDate", "");
                 }}
               />
               <label htmlFor="current">Current {type}</label>
             </div>
 
-            <div className="space-y-2">
-              <Textarea
-                placeholder={`Description of your ${type.toLowerCase()}`}
-                className="h-32"
-                {...register("description")}
-                error={errors.description}
-              />
-              {errors.description && (
-                <p className="text-sm text-red-500">
-                  {errors.description.message}
-                </p>
-              )}
-            </div>
+            <Textarea
+              placeholder={`Description of your ${type.toLowerCase()}`}
+              className="h-32"
+              {...register("description")}
+            />
+
             <Button
               type="button"
               variant="ghost"
@@ -259,6 +210,7 @@ export function EntryForm({ type, entries, onChange }) {
         </Card>
       )}
 
+      {/* Add button */}
       {!isAdding && (
         <Button
           className="w-full"
@@ -272,3 +224,93 @@ export function EntryForm({ type, entries, onChange }) {
     </div>
   );
 }
+
+// ✅ Wrapper form for all resume sections
+export function ResumeEntryForm({ formValues, setFormValues }) {
+  const updateField = (field, value) => {
+    setFormValues({ ...formValues, [field]: value });
+  };
+
+  return (
+    <div className="space-y-8">
+      {/* Contact Info */}
+      <section>
+        <h2 className="text-lg font-semibold mb-2">Contact Info</h2>
+        <Input
+          placeholder="Email"
+          value={formValues.contactInfo?.email || ""}
+          onChange={(e) =>
+            updateField("contactInfo", {
+              ...formValues.contactInfo,
+              email: e.target.value,
+            })
+          }
+          className="mb-2"
+        />
+        <Input
+          placeholder="Mobile"
+          value={formValues.contactInfo?.mobile || ""}
+          onChange={(e) =>
+            updateField("contactInfo", {
+              ...formValues.contactInfo,
+              mobile: e.target.value,
+            })
+          }
+          className="mb-2"
+        />
+        <Input
+          placeholder="LinkedIn"
+          value={formValues.contactInfo?.linkedin || ""}
+          onChange={(e) =>
+            updateField("contactInfo", {
+              ...formValues.contactInfo,
+              linkedin: e.target.value,
+            })
+          }
+        />
+      </section>
+
+      {/* Summary */}
+      <section>
+        <h2 className="text-lg font-semibold mb-2">Summary</h2>
+        <Textarea
+          placeholder="Write a short professional summary"
+          value={formValues.summary || ""}
+          onChange={(e) => updateField("summary", e.target.value)}
+        />
+      </section>
+
+      {/* Experience */}
+      <section>
+        <h2 className="text-lg font-semibold mb-2">Experience</h2>
+        <EntryForm
+          type="Experience"
+          entries={formValues.experience || []}
+          onChange={(val) => updateField("experience", val)}
+        />
+      </section>
+
+      {/* Education */}
+      <section>
+        <h2 className="text-lg font-semibold mb-2">Education</h2>
+        <EntryForm
+          type="Education"
+          entries={formValues.education || []}
+          onChange={(val) => updateField("education", val)}
+        />
+      </section>
+
+      {/* Projects */}
+      <section>
+        <h2 className="text-lg font-semibold mb-2">Projects</h2>
+        <EntryForm
+          type="Project"
+          entries={formValues.projects || []}
+          onChange={(val) => updateField("projects", val)}
+        />
+      </section>
+    </div>
+  );
+}
+
+export default ResumeEntryForm;

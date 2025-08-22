@@ -147,3 +147,13 @@ model BlogComment {
   @@index([blogPostId])
   @@index([status])
 }
+
+model ResumeTemplate {
+  id           Int      @id @default(autoincrement())
+  key          String   @unique        // e.g. "classic", "modern"
+  name         String
+  description  String?
+  thumbnailUrl String?
+  htmlCode     String   // The HTML template
+  createdAt    DateTime @default(now())
+}
