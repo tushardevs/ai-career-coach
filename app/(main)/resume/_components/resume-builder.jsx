@@ -42,7 +42,16 @@ export default function ResumeBuilder({ initialContent, initialTemplate }) {
   } = useForm({
     resolver: zodResolver(resumeSchema),
     defaultValues: {
-      contactInfo: {},
+      contactInfo: {
+        fullName: "",
+        jobTitle: "",
+        email: "",
+        mobile: "",
+        location: "",
+        linkedin: "",
+        twitter: "",
+        website: ""
+      },
       summary: "",
       skills: "",
       experience: [],
@@ -87,16 +96,19 @@ export default function ResumeBuilder({ initialContent, initialTemplate }) {
 
   const getContactMarkdown = () => {
     const { contactInfo } = formValues;
-    const parts = [];
-    if (contactInfo.email) parts.push(`📧 ${contactInfo.email}`);
-    if (contactInfo.mobile) parts.push(`📱 ${contactInfo.mobile}`);
-    if (contactInfo.linkedin)
-      parts.push('💼 [LinkedIn](${contactInfo.linkedin})');
-    if (contactInfo.twitter) parts.push('🐦 [Twitter](${contactInfo.twitter})');
+    const fullName = contactInfo?.fullName || user?.fullName || 'Your Name';
+    const jobTitle = contactInfo?.jobTitle || 'Your Job Title';
 
-    return parts.length > 0
-      ? `## <div align='center'>${user.fullName}</div>\n\n<div align='center'>\n\n${parts.join(' | ')}\n\n</div>`
-      : "";
+    const parts = [];
+    if (contactInfo?.email) parts.push(`📧 ${contactInfo.email}`);
+    if (contactInfo?.mobile) parts.push(`📱 ${contactInfo.mobile}`);
+    if (contactInfo?.location) parts.push(`📍 ${contactInfo.location}`);
+    if (contactInfo?.linkedin)
+      parts.push(`💼 [LinkedIn](${contactInfo.linkedin})`);
+    if (contactInfo?.twitter) parts.push(`🐦 [Twitter](${contactInfo.twitter})`);
+    if (contactInfo?.website) parts.push(`🌐 [Website](${contactInfo.website})`);
+
+    return `## <div align='center'>${fullName}</div>\n\n<div align='center'>\n\n**${jobTitle}**\n\n${parts.join(' | ')}\n\n</div>`;
   };
 
   const getCombinedContent = () => {
@@ -121,7 +133,7 @@ export default function ResumeBuilder({ initialContent, initialTemplate }) {
       // Dynamically import html2pdf only on client side
       const html2pdf = (await import("html2pdf.js/dist/html2pdf.min.js")).default;
 
-      const element = document.getElementById("resume-pdf");
+      const element = document.getElementById("resume-pdf") || document.getElementById("resume-preview");
       const opt = {
         margin: [15, 15],
         filename: "resume.pdf",
@@ -170,81 +182,171 @@ export default function ResumeBuilder({ initialContent, initialTemplate }) {
 
     let interpolated = htmlContent;
 
-    // Basic personal info
-    interpolated = interpolated.replace(/\{\{name\}\}/g, formData.personalInfo?.fullName || 'Your Name');
-    interpolated = interpolated.replace(/\{\{email\}\}/g, formData.personalInfo?.email || 'your.email@example.com');
-    interpolated = interpolated.replace(/\{\{phone\}\}/g, formData.personalInfo?.phone || '+1 (555) 123-4567');
-    interpolated = interpolated.replace(/\{\{location\}\}/g, formData.personalInfo?.location || 'Your City, State');
-    interpolated = interpolated.replace(/\{\{linkedin\}\}/g, formData.personalInfo?.linkedin || 'linkedin.com/in/yourprofile');
-    interpolated = interpolated.replace(/\{\{website\}\}/g, formData.personalInfo?.website || 'yourwebsite.com');
-    interpolated = interpolated.replace(/\{\{jobTitle\}\}/g, formData.personalInfo?.title || 'Your Job Title');
+    // Basic personal info - use form data or fallbacks
+    const personalInfo = {
+      fullName: formData.contactInfo?.fullName || user?.fullName || 'Your Name',
+      email: formData.contactInfo?.email || 'your.email@example.com',
+      phone: formData.contactInfo?.mobile || '+1 (555) 123-4567',
+      location: formData.contactInfo?.location || 'Your City, State',
+      linkedin: formData.contactInfo?.linkedin || 'linkedin.com/in/yourprofile',
+      website: formData.contactInfo?.website || 'yourwebsite.com',
+      title: formData.contactInfo?.jobTitle || 'Your Job Title'
+    };
+
+    // Replace basic template variables
+    interpolated = interpolated.replace(/\{\{name\}\}/g, personalInfo.fullName);
+    interpolated = interpolated.replace(/\{\{email\}\}/g, personalInfo.email);
+    interpolated = interpolated.replace(/\{\{phone\}\}/g, personalInfo.phone);
+    interpolated = interpolated.replace(/\{\{location\}\}/g, personalInfo.location);
+    interpolated = interpolated.replace(/\{\{linkedin\}\}/g, personalInfo.linkedin);
+    interpolated = interpolated.replace(/\{\{website\}\}/g, personalInfo.website);
+    interpolated = interpolated.replace(/\{\{jobTitle\}\}/g, personalInfo.title);
     interpolated = interpolated.replace(/\{\{summary\}\}/g, formData.summary || 'Your professional summary goes here...');
 
-    // Experience section
-    if (formData.experience && formData.experience.length > 0) {
-      const experienceHtml = formData.experience.map(exp => `
-        <div class="job">
-          <h3>${exp.title || 'Job Title'} - ${exp.company || 'Company Name'}</h3>
-          <p class="dates">${exp.startDate || 'Start Date'} - ${exp.endDate || 'End Date'}</p>
-          <ul>
-            ${(exp.description || 'Job responsibilities...').split('\n').map(line =>
-              line.trim() ? `<li>${line.trim()}</li>` : ''
-            ).join('')}
-          </ul>
-        </div>
-      `).join('');
+    // Handle skills section - support both formats
+    let skillsText = '';
+    let skillsArray = [];
 
-      interpolated = interpolated.replace(
-        /\{\{#each experience\}\}.*?\{\{\/each\}\}/gs,
-        experienceHtml
-      );
+    if (formData.skills) {
+      if (typeof formData.skills === 'string') {
+        skillsText = formData.skills;
+        skillsArray = formData.skills.split(',').map(skill => skill.trim()).filter(Boolean);
+      } else if (Array.isArray(formData.skills)) {
+        skillsArray = formData.skills.map(skill =>
+          typeof skill === 'object' && skill.name ? skill.name : skill
+        );
+        skillsText = skillsArray.join(', ');
+      }
+    }
+
+    interpolated = interpolated.replace(/\{\{skills\}\}/g, skillsText || 'JavaScript, React, Node.js, Python, SQL');
+
+    // Handle skills list for templates that expect individual skill items
+    if (skillsArray.length > 0) {
+      const skillsListHtml = skillsArray.map(skill =>
+        `<div class="skill-item">${skill}</div>`
+      ).join('');
+      interpolated = interpolated.replace(/\{\{#each skillsList\}\}.*?\{\{\/each\}\}/gs, skillsListHtml);
+    } else {
+      // Provide fallback skills
+      const fallbackSkills = ['JavaScript', 'React', 'Node.js', 'Python', 'SQL'];
+      const skillsListHtml = fallbackSkills.map(skill =>
+        `<div class="skill-item">${skill}</div>`
+      ).join('');
+      interpolated = interpolated.replace(/\{\{#each skillsList\}\}.*?\{\{\/each\}\}/gs, skillsListHtml);
+    }
+
+    // Experience section - handle different template formats
+    if (formData.experience && formData.experience.length > 0) {
+      const experienceHtml = formData.experience.map(exp => {
+        const responsibilities = (exp.description || 'Key responsibilities and achievements').split('\n').filter(line => line.trim());
+        const responsibilitiesHtml = responsibilities.map(line => {
+          const cleanLine = line.trim().replace(/^[•\-\*]\s*/, '');
+          return `<li>${cleanLine}</li>`;
+        }).join('');
+
+        return `
+          <div class="job job-item experience-item">
+            <div class="job-header">
+              <h3>${exp.title || 'Job Title'}</h3>
+              <span class="company">${exp.organization || 'Company Name'}</span>
+              <span class="dates">${exp.startDate || 'Start Date'}${exp.endDate && !exp.current ? ' - ' + exp.endDate : exp.current ? ' - Present' : ''}</span>
+            </div>
+            <div class="timeline-dot"></div>
+            <div class="content">
+              <h3>${exp.title || 'Job Title'}</h3>
+              <h4>${exp.organization || 'Company Name'}</h4>
+              <span class="period">${exp.startDate || 'Start Date'}${exp.endDate && !exp.current ? ' - ' + exp.endDate : exp.current ? ' - Present' : ''}</span>
+              <ul class="achievements responsibilities">
+                ${responsibilitiesHtml}
+              </ul>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      interpolated = interpolated.replace(/\{\{#each experience\}\}.*?\{\{\/each\}\}/gs, experienceHtml);
+    } else {
+      const fallbackExperience = `
+        <div class="job job-item experience-item">
+          <div class="job-header">
+            <h3>Software Engineer</h3>
+            <span class="company">Tech Company</span>
+            <span class="dates">2021 - Present</span>
+          </div>
+          <div class="timeline-dot"></div>
+          <div class="content">
+            <h3>Software Engineer</h3>
+            <h4>Tech Company</h4>
+            <span class="period">2021 - Present</span>
+            <ul class="achievements responsibilities">
+              <li>Developed and maintained web applications using modern technologies</li>
+              <li>Collaborated with cross-functional teams to deliver high-quality software</li>
+              <li>Implemented best practices for code quality and performance</li>
+            </ul>
+          </div>
+        </div>
+      `;
+      interpolated = interpolated.replace(/\{\{#each experience\}\}.*?\{\{\/each\}\}/gs, fallbackExperience);
     }
 
     // Education section
     if (formData.education && formData.education.length > 0) {
       const educationHtml = formData.education.map(edu => `
         <div class="edu-item">
-          <h3>${edu.degree || 'Degree'} - ${edu.school || 'School Name'}</h3>
-          <p class="dates">${edu.year || 'Graduation Year'}</p>
+          <h3>${edu.title || 'Degree'}</h3>
+          <p class="school">${edu.organization || 'University'}</p>
+          <p class="dates">${edu.startDate || 'Year'}${edu.endDate && !edu.current ? ' - ' + edu.endDate : edu.current ? ' - Present' : ''}</p>
+          ${edu.description ? `<p class="description">${edu.description}</p>` : ''}
         </div>
       `).join('');
 
-      interpolated = interpolated.replace(
-        /\{\{#each education\}\}.*?\{\{\/each\}\}/gs,
-        educationHtml
-      );
+      interpolated = interpolated.replace(/\{\{#each education\}\}.*?\{\{\/each\}\}/gs, educationHtml);
+    } else {
+      const fallbackEducation = `
+        <div class="edu-item">
+          <h3>Bachelor of Science in Computer Science</h3>
+          <p class="school">University Name</p>
+          <p class="dates">2020</p>
+        </div>
+      `;
+      interpolated = interpolated.replace(/\{\{#each education\}\}.*?\{\{\/each\}\}/gs, fallbackEducation);
     }
 
-    // Skills section
-    if (formData.skills && formData.skills.length > 0) {
-      const skillsText = Array.isArray(formData.skills)
-        ? formData.skills.map(skill => (typeof skill === 'object' && skill.name) ? skill.name : skill).join(', ')
-        : 'No skills provided';
-      interpolated = interpolated.replace(/\{\{skills\}\}/g, skillsText);
-
-      // For skills list (array format)
-      const skillsListHtml = Array.isArray(formData.skills)
-          ? formData.skills.map(skill =>
-              (typeof skill === 'object' && skill.name) ? skill.name : skill
-            ).join(', ')
-          : 'No skills provided';
-      interpolated = interpolated.replace(/\{\{skillsList\}\}/g, skillsListHtml);
-    }
-
-    // Projects section
+    // Projects section - this was missing proper handling
     if (formData.projects && formData.projects.length > 0) {
       const projectsHtml = formData.projects.map(project => `
-        <div class="project-card">
-          <h3>${project.name || 'Project Name'}</h3>
-          <p>${project.description || 'Project description...'}</p>
+        <div class="project-card project-item">
+          <h3>${project.title || 'Project Name'}</h3>
+          <p class="description">${project.description || 'Project description and key achievements'}</p>
+          ${project.organization ? `<p class="organization">${project.organization}</p>` : ''}
+          ${project.startDate || project.endDate ? `<p class="dates">${project.startDate || ''}${project.endDate && !project.current ? ' - ' + project.endDate : project.current ? ' - Present' : ''}</p>` : ''}
         </div>
       `).join('');
 
-      interpolated = interpolated.replace(
-        /\{\{#each projects\}\}.*?\{\{\/each\}\}/gs,
-        projectsHtml
-      );
+      interpolated = interpolated.replace(/\{\{#each projects\}\}.*?\{\{\/each\}\}/gs, projectsHtml);
+    } else {
+      const fallbackProjects = `
+        <div class="project-card project-item">
+          <h3>E-commerce Platform</h3>
+          <p class="description">Built a full-stack e-commerce platform with React and Node.js, featuring user authentication, payment processing, and inventory management.</p>
+        </div>
+        <div class="project-card project-item">
+          <h3>Mobile App</h3>
+          <p class="description">Developed a cross-platform mobile application using React Native, serving over 10,000 active users.</p>
+        </div>
+      `;
+      interpolated = interpolated.replace(/\{\{#each projects\}\}.*?\{\{\/each\}\}/gs, fallbackProjects);
     }
+
+    // Handle fallback replacements for missing template variables
+    interpolated = interpolated.replace(/\{\{degree\}\}/g, 'Bachelor of Science in Computer Science');
+    interpolated = interpolated.replace(/\{\{school\}\}/g, 'University Name');
+    interpolated = interpolated.replace(/\{\{year\}\}/g, '2020');
+    interpolated = interpolated.replace(/\{\{company\}\}/g, 'Company Name');
+    interpolated = interpolated.replace(/\{\{title\}\}/g, 'Job Title');
+    interpolated = interpolated.replace(/\{\{startDate\}\}/g, 'Start Date');
+    interpolated = interpolated.replace(/\{\{endDate\}\}/g, 'End Date');
 
     return interpolated;
   };
@@ -324,8 +426,34 @@ export default function ResumeBuilder({ initialContent, initialTemplate }) {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
             {/* Contact Information */}
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">Contact Information</h3>
+              <h3 className="text-lg font-medium">Personal Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/50">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Full Name</label>
+                  <Input
+                    {...register("contactInfo.fullName")}
+                    placeholder="John Doe"
+                    error={errors.contactInfo?.fullName}
+                  />
+                  {errors.contactInfo?.fullName && (
+                    <p className="text-sm text-red-500">
+                      {errors.contactInfo.fullName.message}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Job Title</label>
+                  <Input
+                    {...register("contactInfo.jobTitle")}
+                    placeholder="Software Engineer"
+                    error={errors.contactInfo?.jobTitle}
+                  />
+                  {errors.contactInfo?.jobTitle && (
+                    <p className="text-sm text-red-500">
+                      {errors.contactInfo.jobTitle.message}
+                    </p>
+                  )}
+                </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Email</label>
                   <Input
@@ -350,6 +478,32 @@ export default function ResumeBuilder({ initialContent, initialTemplate }) {
                   {errors.contactInfo?.mobile && (
                     <p className="text-sm text-red-500">
                       {errors.contactInfo.mobile.message}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Location</label>
+                  <Input
+                    {...register("contactInfo.location")}
+                    placeholder="City, State"
+                    error={errors.contactInfo?.location}
+                  />
+                  {errors.contactInfo?.location && (
+                    <p className="text-sm text-red-500">
+                      {errors.contactInfo.location.message}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Website</label>
+                  <Input
+                    {...register("contactInfo.website")}
+                    type="url"
+                    placeholder="https://yourwebsite.com"
+                  />
+                  {errors.contactInfo?.website && (
+                    <p className="text-sm text-red-500">
+                      {errors.contactInfo.website.message}
                     </p>
                   )}
                 </div>
@@ -537,6 +691,7 @@ export default function ResumeBuilder({ initialContent, initialTemplate }) {
               <div className="relative">
                 <style dangerouslySetInnerHTML={{ __html: selectedTemplate.cssStyles }} />
                 <div
+                  id="resume-preview"
                   className="p-4 bg-white min-h-[750px]"
                   dangerouslySetInnerHTML={{
                     __html: interpolateTemplate(selectedTemplate.htmlContent, watch())

@@ -1,15 +1,15 @@
 import { getResume } from "@/actions/resume";
-import { seedDefaultTemplates } from "@/actions/templates";
+// import { seedDefaultTemplates } from "@/actions/templates";
 import ResumeBuilder from "./_components/resume-builder";
 
 export default async function ResumePage() {
   // Seed default templates if they don't exist
-  try {
-    await seedDefaultTemplates();
-  } catch (error) {
-    console.error("Error seeding templates:", error);
-    // Continue without seeding if database is not available
-  }
+//   try {
+//     await seedDefaultTemplates();
+//   } catch (error) {
+//     console.error("Error seeding templates:", error);
+//     // Continue without seeding if database is not available
+//   }
 
   let resume = null;
   try {
