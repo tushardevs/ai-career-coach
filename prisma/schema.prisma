@@ -21,7 +21,7 @@ model User {
   // Profile fields
   bio           String?
   experience    Int?      // Years of experience
-  
+
   // Relations
   skills        String[]  // Array of skills
   assessments   Assessment[]
@@ -48,10 +48,31 @@ model Resume {
   userId      String    @unique    // One resume per user
   user        User      @relation(fields: [userId], references: [id])
   content     String    @db.Text // Markdown content
+  templateId  String?   // Reference to template used
+  template    ResumeTemplate? @relation(fields: [templateId], references: [id])
   atsScore    Float?
   feedback    String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+model ResumeTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  category    String
+  htmlContent String   @db.Text // HTML template content
+  cssStyles   String   @db.Text // CSS styles for the template
+  preview     String?  // Preview image URL
+  isDefault   Boolean  @default(false)
+  isPremium   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  resumes     Resume[]
+
+  @@index([category])
 }
 
 model CoverLetter {
@@ -73,25 +94,25 @@ model CoverLetter {
 model IndustryInsight {
   id            String    @id @default(cuid())
   industry      String    @unique  // The industry this data belongs to (e.g., "tech-software-development")
-  
+
   // Users in this industry
   users         User[]
-  
+
   // Salary data
   salaryRanges  Json[]    // Array of { role: string, min: float, max: float, median: float, location: string? }
-  
+
   // Industry trends
   growthRate    Float     // Industry growth rate
   demandLevel   String    // "High", "Medium", "Low"
   topSkills     String[]  // Most in-demand skills
-  
+
   // Market conditions
   marketOutlook String    // "Positive", "Neutral", "Negative"
   keyTrends     String[]  // Array of current industry trends
-  
+
   // Learning suggestions
   recommendedSkills String[]  // Skills recommended for the industry
-  
+
   lastUpdated   DateTime  @default(now())
   nextUpdate    DateTime  // Scheduled update time
 
@@ -114,19 +135,19 @@ model BlogPost {
   tags          String[]  // Array of tags for categorization
   featured      Boolean   @default(false) // Whether post is featured
   status        String    @default("published") // draft, published, archived
-  
+
   // SEO fields
   metaTitle     String?   // SEO meta title
   metaDescription String? // SEO meta description
   keywords      String[]  // SEO keywords
-  
+
   // Content management
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  
+
   // Relations
   comments      BlogComment[] // Blog comments
-  
+
   @@index([category])
   @@index([status])
   @@index([publishDate])
@@ -143,7 +164,7 @@ model BlogComment {
   content     String    // Comment content
   status      String    @default("pending") // pending, approved, spam
   createdAt   DateTime  @default(now())
-  
+
   @@index([blogPostId])
   @@index([status])
 }

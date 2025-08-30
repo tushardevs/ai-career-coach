@@ -8,7 +8,7 @@ import { revalidatePath } from "next/cache";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-export async function saveResume(content) {
+export async function saveResume(content, templateId = null) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
@@ -25,10 +25,12 @@ export async function saveResume(content) {
       },
       update: {
         content,
+        ...(templateId && { templateId }),
       },
       create: {
         userId: user.id,
         content,
+        ...(templateId && { templateId }),
       },
     });
 
@@ -53,6 +55,9 @@ export async function getResume() {
   return await db.resume.findUnique({
     where: {
       userId: user.id,
+    },
+    include: {
+      template: true,
     },
   });
 }
